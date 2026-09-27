@@ -37,30 +37,16 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchWorkouts() {
       try {
-        // Try Primary API
-        let res = await fetch('https://api.abcz.workers.dev/api/fitlog');
-        
-        // If primary fails, try Alternative API
+        let res = await fetch('https://api.api-store.workers.dev/api/fitlog');
         if (!res.ok) {
-          res = await fetch('https://api.api-store.workers.dev/api/fitlog');
+          res = await fetch('https://api.abcz.workers.dev/api/fitlog');
         }
-
         if (!res.ok) throw new Error('Failed to fetch from both APIs');
 
         const data = await res.json();
         setWorkouts(data);
       } catch (err) {
         console.warn('Primary API failed, trying alternative API...', err);
-        try {
-          const altRes = await fetch('https://api.api-store.workers.dev/api/fitlog');
-          if (altRes.ok) {
-            const altData = await altRes.json();
-            setWorkouts(altData);
-            return;
-          }
-        } catch (altErr) {
-          console.error('Both APIs failed, loading mock data', altErr);
-        }
         setWorkouts(MOCK_WORKOUTS);
       } finally {
         setLoading(false);
@@ -69,15 +55,23 @@ export default function HomePage() {
     fetchWorkouts();
   }, []);
 
+  // Safe Calories Value Extractor
+  const getCalories = (item: any): number => {
+    const rawVal = item.calories ?? item.calorie ?? item.caloriesBurned ?? 0;
+    const num = typeof rawVal === 'number' ? rawVal : parseInt(String(rawVal), 10);
+    return !isNaN(num) ? num : 0;
+  };
+
   const sortedWorkouts = [...workouts].sort((a, b) => {
-    if (sortBy === 'duration') return a.duration - b.duration;
-    if (sortBy === 'calories') return b.calories - a.calories;
-    if (sortBy === 'rating') return b.rating - a.rating;
+    if (sortBy === 'duration') return (a.duration || 0) - (b.duration || 0);
+    if (sortBy === 'calories') return getCalories(b) - getCalories(a);
+    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
     return 0;
   });
 
   return (
     <main className="bg-[#0b0c0e] min-h-screen text-white pb-16">
+      {/* Banner Section */}
       <section className="max-w-7xl mx-auto px-6 py-12 lg:py-20 grid lg:grid-cols-2 gap-12 items-center">
         <div>
           <span className="text-[#ccff00] text-xs font-bold uppercase tracking-widest block mb-3">
@@ -111,6 +105,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Library Section */}
       <section id="library" className="max-w-7xl mx-auto px-6 pt-12">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4">
           <div>
@@ -144,55 +139,59 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedWorkouts.map((item) => (
-              <Link
-                key={item.id}
-                href={`/fitlog/${item.id}`}
-                className="bg-[#13151b] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-all flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="relative h-48 bg-[#1a1d26] w-full overflow-hidden">
-                    <Image
-                      src={item.image}
-                      alt={item.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="p-5">
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {item.categoryTags?.map((tag) => (
-                        <span
-                          key={tag}
-                          className="bg-[#ccff00] text-black font-bold text-[10px] px-2 py-0.5 rounded uppercase"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    <h3 className="font-black text-lg uppercase tracking-wide mb-1 text-white group-hover:text-[#ccff00] transition-colors">
-                      {item.name}
-                    </h3>
-                    <p className="text-xs text-gray-400 mb-4">{item.equipment}</p>
-                  </div>
-                </div>
+            {sortedWorkouts.map((item) => {
+              const calVal = getCalories(item);
 
-                <div className="px-5 pb-5 pt-2 border-t border-gray-800/50 flex items-center justify-between text-xs text-gray-400">
-                  <div className="flex items-center gap-1">
-                    <Clock size={14} className="text-gray-500" />
-                    <span>{item.duration} min</span>
+              return (
+                <Link
+                  key={item.id}
+                  href={`/fitlog/${item.id}`}
+                  className="bg-[#13151b] border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-all flex flex-col justify-between group"
+                >
+                  <div>
+                    <div className="relative h-48 bg-[#1a1d26] w-full overflow-hidden">
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="p-5">
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {item.categoryTags?.map((tag) => (
+                          <span
+                            key={tag}
+                            className="bg-[#ccff00] text-black font-bold text-[10px] px-2 py-0.5 rounded uppercase"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                      <h3 className="font-black text-lg uppercase tracking-wide mb-1 text-white group-hover:text-[#ccff00] transition-colors">
+                        {item.name}
+                      </h3>
+                      <p className="text-xs text-gray-400 mb-4">{item.equipment}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Flame size={14} className="text-gray-500" />
-                    <span>{item.calories} kcal</span>
+
+                  <div className="px-5 pb-5 pt-2 border-t border-gray-800/50 flex items-center justify-between text-xs text-gray-400">
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} className="text-gray-500" />
+                      <span>{item.duration} min</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Flame size={14} className="text-gray-500" />
+                      <span>{calVal > 0 ? `${calVal} kcal` : 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Star size={14} className="text-[#ccff00] fill-[#ccff00]" />
+                      <span className="text-white font-medium">{item.rating}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Star size={14} className="text-[#ccff00] fill-[#ccff00]" />
-                    <span className="text-white font-medium">{item.rating}</span>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         )}
       </section>

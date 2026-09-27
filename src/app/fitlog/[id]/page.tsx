@@ -7,36 +7,29 @@ import { usePlan, Workout } from '@/context/PlanContext';
 import { Plus, Bookmark, Loader2 } from 'lucide-react';
 
 export default function WorkoutDetailPage() {
-  const { id } = useParams();
+  const params = useParams();
+  const id = params?.id;
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
   const { addToPlan, addToSaved } = usePlan();
 
   useEffect(() => {
     async function fetchDetail() {
+      if (!id) return;
       try {
-        let res = await fetch(`https://api.abcz.workers.dev/api/fitlog/${id}`);
+        let res = await fetch(`https://api.api-store.workers.dev/api/fitlog/${id}`);
         if (!res.ok) {
-          res = await fetch(`https://api.api-store.workers.dev/api/fitlog/${id}`);
+          res = await fetch(`https://api.abcz.workers.dev/api/fitlog/${id}`);
         }
         const data = await res.json();
         setWorkout(data);
       } catch (err) {
-        console.warn('Primary fetch failed, attempting alternative API...', err);
-        try {
-          const altRes = await fetch(`https://api.api-store.workers.dev/api/fitlog/${id}`);
-          if (altRes.ok) {
-            const altData = await altRes.json();
-            setWorkout(altData);
-          }
-        } catch (altErr) {
-          console.error('Failed fetching details from alternative API', altErr);
-        }
+        console.error('Failed to fetch details:', err);
       } finally {
         setLoading(false);
       }
     }
-    if (id) fetchDetail();
+    fetchDetail();
   }, [id]);
 
   if (loading) {
@@ -50,11 +43,22 @@ export default function WorkoutDetailPage() {
 
   if (!workout) {
     return (
-      <div className="min-h-screen bg-[#0b0c0e] flex items-center justify-center text-white">
-        <h2>Workout details unavailable.</h2>
+      <div className="min-h-screen bg-[#0b0c0e] flex flex-col items-center justify-center text-white gap-4">
+        <h2 className="text-xl font-bold">Workout details unavailable.</h2>
+        <a href="/" className="text-[#ccff00] underline text-sm">Return to Home</a>
       </div>
     );
   }
+
+  // Safe calorie display helper
+  const getCaloriesText = () => {
+    const rawVal =
+      workout.calories ??
+      (workout as any).calorie ??
+      (workout as any).caloriesBurned;
+    const num = typeof rawVal === 'number' ? rawVal : parseInt(String(rawVal), 10);
+    return !isNaN(num) && num > 0 ? `${num} kcal` : 'N/A';
+  };
 
   return (
     <main className="bg-[#0b0c0e] min-h-screen text-white py-12 px-6">
@@ -110,7 +114,7 @@ export default function WorkoutDetailPage() {
             </div>
             <div className="flex justify-between py-2.5">
               <span className="text-gray-400 uppercase font-semibold">CALORIES</span>
-              <span className="text-white font-medium">{workout.calories} kcal</span>
+              <span className="text-white font-medium">{getCaloriesText()}</span>
             </div>
             <div className="flex justify-between py-2.5">
               <span className="text-gray-400 uppercase font-semibold">RATING</span>
