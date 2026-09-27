@@ -15,11 +15,23 @@ export default function WorkoutDetailPage() {
   useEffect(() => {
     async function fetchDetail() {
       try {
-        const res = await fetch(`https://api.abcz.workers.dev/api/fitlog/${id}`);
+        let res = await fetch(`https://api.abcz.workers.dev/api/fitlog/${id}`);
+        if (!res.ok) {
+          res = await fetch(`https://api.api-store.workers.dev/api/fitlog/${id}`);
+        }
         const data = await res.json();
         setWorkout(data);
       } catch (err) {
-        console.error('Failed fetching workout details', err);
+        console.warn('Primary fetch failed, attempting alternative API...', err);
+        try {
+          const altRes = await fetch(`https://api.api-store.workers.dev/api/fitlog/${id}`);
+          if (altRes.ok) {
+            const altData = await altRes.json();
+            setWorkout(altData);
+          }
+        } catch (altErr) {
+          console.error('Failed fetching details from alternative API', altErr);
+        }
       } finally {
         setLoading(false);
       }

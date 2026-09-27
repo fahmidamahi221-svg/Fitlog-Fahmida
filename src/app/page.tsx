@@ -6,6 +6,29 @@ import Image from 'next/image';
 import { Workout } from '@/context/PlanContext';
 import { ArrowDown, Flame, Clock, Star, ChevronDown, Loader2 } from 'lucide-react';
 
+const MOCK_WORKOUTS: Workout[] = [
+  {
+    id: '1',
+    name: 'Barbell Incline Bench Press',
+    description: 'Target the upper chest and shoulders with a classic incline barbell press.',
+    image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?q=80&w=800&auto=format&fit=crop',
+    categoryTags: ['Chest', 'Strength'],
+    equipment: 'Barbell & Incline Bench',
+    difficulty: 'Intermediate',
+    sets: 4,
+    reps: '8-10',
+    duration: 25,
+    calories: 210,
+    rating: 4.8,
+    instructions: [
+      'Set incline bench to 30 degrees.',
+      'Unrack barbell over upper chest.',
+      'Lower bar slowly until touching chest.',
+      'Press explosively back to top.'
+    ]
+  }
+];
+
 export default function HomePage() {
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,11 +37,31 @@ export default function HomePage() {
   useEffect(() => {
     async function fetchWorkouts() {
       try {
-        const res = await fetch('https://api.abcz.workers.dev/api/fitlog');
+        // Try Primary API
+        let res = await fetch('https://api.abcz.workers.dev/api/fitlog');
+        
+        // If primary fails, try Alternative API
+        if (!res.ok) {
+          res = await fetch('https://api.api-store.workers.dev/api/fitlog');
+        }
+
+        if (!res.ok) throw new Error('Failed to fetch from both APIs');
+
         const data = await res.json();
         setWorkouts(data);
       } catch (err) {
-        console.error('Failed fetching workouts', err);
+        console.warn('Primary API failed, trying alternative API...', err);
+        try {
+          const altRes = await fetch('https://api.api-store.workers.dev/api/fitlog');
+          if (altRes.ok) {
+            const altData = await altRes.json();
+            setWorkouts(altData);
+            return;
+          }
+        } catch (altErr) {
+          console.error('Both APIs failed, loading mock data', altErr);
+        }
+        setWorkouts(MOCK_WORKOUTS);
       } finally {
         setLoading(false);
       }
@@ -73,7 +116,7 @@ export default function HomePage() {
           <div>
             <h2 className="text-2xl font-black uppercase tracking-wide">THE LIBRARY</h2>
             <p className="text-gray-400 text-xs sm:text-sm mt-1">
-              Twelve lifts covering every major muscle group.
+              Select a workout to view details or add to your plan.
             </p>
           </div>
 
@@ -100,7 +143,7 @@ export default function HomePage() {
             <span className="text-sm">Loading workouts…</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {sortedWorkouts.map((item) => (
               <Link
                 key={item.id}
